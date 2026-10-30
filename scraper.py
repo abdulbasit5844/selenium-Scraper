@@ -9,7 +9,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from summarizer import summarize
 
-SEARCH_URL = "https://arynews.tv"
+SEARCH_URL = "https://arynews.tv/search/{}"
+BASE = "https://arynews.tv/"
+SKIP = ("search", "category", "tag", "author", "writers", "about-us", "contact-us", "feedback",
+        "privacy-policy", "mobile-apps", "live", "videos")
 UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
       "Chrome/124.0.0.0 Safari/537.36")
 
@@ -31,10 +34,13 @@ def first_result_url(driver, keyword):
     driver.get(SEARCH_URL.format(quote_plus(keyword)))
     deadline = time.time() + 25
     while time.time() < deadline:
-        for a in driver.find_elements(By.CSS_SELECTOR, "a[href]"):
-            href = a.get_attribute("href") or ""
-            if "technologyreview.com/20" in href and href.count("/") >= 6:
-                return href.split("?")[0]
+        for a in driver.find_elements(By.CSS_SELECTOR, "h2 a[href], h3 a[href], h4 a[href]"):
+            href = (a.get_attribute("href") or "").split("?")[0].split("#")[0]
+            if not href.startswith(BASE):
+                continue
+            slug = href[len(BASE):].strip("/")
+            if slug and "/" not in slug and slug not in SKIP and slug.count("-") >= 2:
+                return href
         time.sleep(1)
     return None
 
