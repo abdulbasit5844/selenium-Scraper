@@ -30,12 +30,16 @@ def make_driver():
     return driver
 
 
+HREFS_JS = ("return Array.from(document.querySelectorAll('h2 a[href], h3 a[href], h4 a[href]'))"
+            ".map(a => a.href);")
+
+
 def first_result_url(driver, keyword):
     driver.get(SEARCH_URL.format(quote_plus(keyword)))
     deadline = time.time() + 25
     while time.time() < deadline:
-        for a in driver.find_elements(By.CSS_SELECTOR, "h2 a[href], h3 a[href], h4 a[href]"):
-            href = (a.get_attribute("href") or "").split("?")[0].split("#")[0]
+        for href in driver.execute_script(HREFS_JS):
+            href = (href or "").split("?")[0].split("#")[0]
             if not href.startswith(BASE):
                 continue
             slug = href[len(BASE):].strip("/")
@@ -45,13 +49,16 @@ def first_result_url(driver, keyword):
     return None
 
 
+PARAS_JS = "return Array.from(document.querySelectorAll('p')).map(p => p.innerText || '');"
+
+
 def article_text(driver, url):
     driver.get(url)
     WebDriverWait(driver, 20).until(lambda d: d.find_elements(By.TAG_NAME, "p"))
-    paras = [p.text.strip() for p in driver.find_elements(By.CSS_SELECTOR, "article p, main p, p")]
+    paras = [t.strip() for t in driver.execute_script(PARAS_JS)]
     seen, out = set(), []
     for p in paras:
-        if len(p.split()) >= 8 and p not in seen:
+        if len(p.split()) >= 8 and p not in seen and "ARY NEWS brings you" not in p:
             seen.add(p)
             out.append(p)
     return " ".join(out)
